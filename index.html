@@ -358,6 +358,10 @@
           <span>On a desktop or laptop computer. Safari, Firefox, and mobile browsers won't work — USB flashing needs the Web Serial API.</span>
         </li>
         <li>
+          <strong>Flip the UART switch on the back of the device to UART1</strong>
+          <span>Required for USB communication. The dashboard ships in UART2 mode (used by the indicator outputs). If you skip this, the device won't appear in the serial port list.</span>
+        </li>
+        <li>
           <strong>Connect the dashboard with a USB-C cable</strong>
           <span>Use a quality data cable — many charge-only cables won't pass USB data and the device won't appear.</span>
         </li>
@@ -370,8 +374,12 @@
           <span>The flash takes about 60 seconds. Don't unplug the cable until you see "Installation complete".</span>
         </li>
         <li>
+          <strong>Flip the UART switch back to UART2</strong>
+          <span>Unplug USB first, flip the switch, then power the dashboard back on. If you leave it on UART1, the indicator outputs (turn signals, warning lights, etc.) won't work.</span>
+        </li>
+        <li>
           <strong>Done</strong>
-          <span>The dashboard reboots automatically into the new firmware. Set up Wi-Fi from the on-screen wizard if needed.</span>
+          <span>The dashboard boots into the new firmware. Set up Wi-Fi from the on-screen wizard if needed.</span>
         </li>
       </ol>
     </div>
@@ -386,7 +394,12 @@
 
       <details class="trouble">
         <summary>The device isn't in the port list</summary>
-        <p>On Windows, install the CP210x or CH340 USB-serial driver if Device Manager shows an unknown device. On macOS and Linux, the device should appear without drivers. If it still doesn't show up, try a different USB port or cable.</p>
+        <p>First, check the UART switch on the back of the dashboard — it must be set to <strong>UART1</strong> for USB to work. If it's on UART2, the device won't show up at all. On Windows, also install the CP210x or CH340 USB-serial driver if Device Manager shows an unknown device. On macOS and Linux, the device should appear without drivers. If it still doesn't show up, try a different USB port or cable.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>Indicators / turn signals don't work after flashing</summary>
+        <p>The UART switch on the back of the device is still on UART1 (USB mode). Power off, flip the switch to <strong>UART2</strong>, and power back on. The indicator outputs share the UART2 pins, so they're disabled while the switch is on UART1.</p>
       </details>
 
       <details class="trouble">
