@@ -5,15 +5,54 @@ A static web page that lets users reflash an RDM-7 Dash over USB. Built with
 
 ## Two modes
 
-**Firmware Update** (recommended — `manifest.json`)
-Writes only the firmware image + OTA selector. Preserves Wi-Fi credentials,
-all settings (NVS), and layouts/images/fonts (LittleFS). The everyday recovery
-path when OTA updates aren't working.
+Both modes pop up the same esp-web-tools dialog that asks "Erase device?" with
+a checkbox. The user's choice on that checkbox determines whether NVS / LittleFS
+data is preserved or wiped. The two modes differ in **which binaries are
+written**.
 
-**Full Recovery Flash** (last resort — `manifest-full.json`, `erase-first`)
-Erases the entire flash and reinstalls bootloader + partition table +
-firmware. Wipes Wi-Fi, settings, layouts, everything. User redoes the
-first-run wizard. Only for bricked devices or boot loops.
+**Firmware Update** (`manifest.json` — 2 parts)
+Writes `ota_data_initial.bin` and `esp32-firmware.bin`. Skips bootloader and
+partition table. Use for everyday firmware updates over USB. User should leave
+the erase checkbox **unchecked** to preserve settings.
+
+**Full Recovery Flash** (`manifest-full.json` — 4 parts)
+Writes all four binaries (bootloader, partition table, otadata, firmware).
+Use when the bootloader or partition table got corrupted. User can leave the
+erase checkbox **unchecked** to repair without losing data, or **checked** for
+a true factory reset.
+
+## Critical: how `new_install_prompt_erase` actually works
+
+This was tripped over during development — documenting because the manifest
+field name is misleading.
+
+Looking at [esp-web-tools install-dialog.ts line 318-323](https://github.com/esphome/esp-web-tools/blob/main/src/install-dialog.ts):
+
+```typescript
+if (this._manifest.new_install_prompt_erase) {
+  this._state = "ASK_ERASE";
+} else {
+  // Default is to erase a device that does not support Improv Serial
+  this._startInstall(true);   // ← TRUE means erase the chip
+}
+```
+
+So for devices that don't run [Improv-Serial](https://www.improv-wifi.com/serial/)
+(our case — the firmware doesn't include it):
+
+- **`new_install_prompt_erase: false`** → no prompt, **chip auto-erases**
+- **`new_install_prompt_erase: true`** → user gets an erase checkbox (default unchecked)
+
+The field name reads like "prompt the user about erase, default no" — but it
+really means "show a prompt at all, or just erase automatically."
+
+Both our manifests use `"new_install_prompt_erase": true` so the user is in
+control via the checkbox.
+
+The `erase-first` attribute on `<esp-web-install-button>` is declared on the
+element (`install-button.ts:57`) but **never propagated** to the install dialog
+by `connect.ts` — it's effectively dead code in current esp-web-tools. Don't
+rely on it.
 
 Audience: end users with a deployed dashboard stuck on an old firmware version
 that can't OTA-update — or a fully bricked device for the full-recovery path.
@@ -115,25 +154,21 @@ If you ever change `partitions.csv` or the bootloader, you'd need to either:
 2. Or instruct users to use Full Recovery for that one release, then revert
    to Firmware Update for subsequent ones.
 
-## What gets preserved by each mode
+## What gets preserved by each mode and checkbox state
 
-| Partition                                | Firmware Update | Full Recovery |
-|------------------------------------------|-----------------|---------------|
-| `nvs` (Wi-Fi, settings, calibrations)    | Preserved       | Erased        |
-| `littlefs` (layouts, images, fonts)      | Preserved       | Erased        |
-| `phy_init` (RF calibration)              | Preserved       | Erased*       |
-| `bootloader`                             | Preserved       | Rewritten     |
-| `partition-table`                        | Preserved       | Rewritten     |
-| `otadata` (OTA selector)                 | Reset           | Reset         |
-| `ota_0` / `ota_1` (app slots)            | `ota_0` written | `ota_0` written |
+| Partition                       | FW Update<br>unchecked | FW Update<br>checked* | Full Recovery<br>unchecked | Full Recovery<br>checked |
+|---------------------------------|------------------------|-----------------------|----------------------------|--------------------------|
+| `bootloader`                    | Preserved              | **WIPED, NOT WRITTEN** | Rewritten                  | Rewritten (after erase)  |
+| `partition-table`               | Preserved              | **WIPED, NOT WRITTEN** | Rewritten                  | Rewritten (after erase)  |
+| `nvs` (Wi-Fi, settings)         | Preserved              | Erased                | Preserved                  | Erased                   |
+| `otadata`                       | Reset                  | Reset                 | Reset                      | Reset                    |
+| `phy_init` (RF calibration)     | Preserved              | Erased                | Preserved                  | Erased                   |
+| `ota_0` (running app)           | New firmware           | New firmware          | New firmware               | New firmware             |
+| `ota_1` (other app slot)        | Preserved (old fw)     | Erased                | Preserved (old fw)         | Erased                   |
+| `littlefs` (layouts, fonts)     | Preserved              | Erased                | Preserved                  | Erased                   |
 
-*Full Recovery uses `erase-first` on the install button, which issues
-`esptool.eraseFlash()` before writing any parts — wiping the whole 16 MB chip.
-
-`manifest.json` has `"new_install_prompt_erase": false` so ESP Web Tools
-doesn't even offer an erase option during Firmware Update — preventing
-accidental factory resets.
-
-`manifest-full.json` has `"new_install_prompt_erase": true` *and* the button
-uses the `erase-first` attribute, so the user is explicitly opting into a
-full wipe via that button.
+\* **Firmware Update + erase checkbox checked = brick.** The chip gets erased,
+but the Firmware Update manifest doesn't include the bootloader, so the device
+boots into 0xFF flash and prints `invalid header: 0xffffffff` forever. Recover
+with Full Recovery (either checkbox state works). The on-page guide tells users
+to leave the box unchecked for Firmware Update.

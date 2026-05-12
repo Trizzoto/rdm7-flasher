@@ -1,8 +1,7 @@
 {
   "name": "RDM-7 Dash Firmware",
   "version": "1.1.9",
-  "home_assistant_domain": "rdm7_dash",
-  "new_install_prompt_erase": false,
+  "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-S3",

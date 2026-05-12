@@ -327,26 +327,32 @@
         </div>
       </div>
       <div class="callout">
-        <strong>Recommended.</strong> Use this if Wi-Fi OTA updates aren't working
-        on your dashboard. Takes about 60 seconds. Nothing is erased except the
-        firmware itself.
+        <strong>Recommended.</strong> Use this if Wi-Fi OTA updates aren't
+        working. When the "Erase device?" dialog appears,
+        <strong>leave the box unchecked</strong> and click Next — that's what
+        preserves your settings. Takes about 60 seconds.
       </div>
     </div>
 
     <div class="panel danger">
       <h2>Full Recovery Flash</h2>
       <p class="panel-desc">
-        Erases the entire flash and reinstalls bootloader, partition table, and
-        firmware. Use only if the dashboard is bricked or stuck in a boot loop.
+        Reinstalls the bootloader, partition table, and firmware. Use if a
+        regular Firmware Update doesn't fix the problem, or if the dashboard is
+        stuck in a boot loop.
       </p>
       <div class="install-row">
-        <esp-web-install-button class="danger" manifest="manifest-full.json" erase-first></esp-web-install-button>
+        <esp-web-install-button class="danger" manifest="manifest-full.json"></esp-web-install-button>
       </div>
       <div class="callout danger">
-        <strong>This will erase everything.</strong> All Wi-Fi credentials,
-        saved layouts, custom images, fonts, and settings will be lost. You'll
-        need to redo first-run setup. Only use this if a regular Firmware Update
-        doesn't fix the problem.
+        <strong>To do a full factory reset:</strong> when the "Erase device?"
+        dialog appears, <strong>check the box</strong> and click Next. All
+        Wi-Fi credentials, layouts, images, and settings will be erased and
+        you'll need to redo first-run setup.
+        <br><br>
+        <strong>To repair without losing data:</strong> leave the box unchecked
+        and click Next. The boot chain gets rewritten but settings are kept.
+        Try this first.
       </div>
     </div>
 
@@ -371,7 +377,11 @@
         </li>
         <li>
           <strong>Click "Install RDM-7 Dash Firmware"</strong>
-          <span>The flash takes about 60 seconds. Don't unplug the cable until you see "Installation complete".</span>
+          <span>An "Erase device?" dialog will appear with a checkbox. For Firmware Update, leave it <strong>unchecked</strong>. For a full factory reset via Full Recovery, <strong>check it</strong>. Then click Next.</span>
+        </li>
+        <li>
+          <strong>Wait for the flash to complete</strong>
+          <span>Takes about 60 seconds. Don't unplug the cable until you see "Installation complete".</span>
         </li>
         <li>
           <strong>Flip the UART switch back to UART2</strong>
@@ -409,7 +419,12 @@
 
       <details class="trouble">
         <summary>After flashing, the screen is blank or stuck on boot</summary>
-        <p>Hold the BOOT button (if your board has one) while reconnecting USB, then re-run the flash. This forces the chip into download mode for a clean install.</p>
+        <p>Most likely the "Erase device?" checkbox was left unchecked while doing Firmware Update on a device that needs a fuller rewrite. Try Full Recovery Flash with the box <strong>unchecked</strong> — that rewrites the bootloader and partition table while keeping settings. If that fails, try Full Recovery Flash with the box <strong>checked</strong> for a complete factory reset.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>"invalid header: 0xffffffff" repeating in the log</summary>
+        <p>The bootloader can't find a valid app image. Run Full Recovery Flash — leave the "Erase device?" box <strong>unchecked</strong> to rewrite the boot chain while keeping your settings, or <strong>check</strong> it for a clean factory state.</p>
       </details>
 
       <details class="trouble">
