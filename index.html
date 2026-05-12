@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RDM-7 Dash — Recovery Flasher</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <script type="module"
+          src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --bg: #0b0e13;
+      --panel: #141923;
+      --panel-border: #1f2733;
+      --text: #e6ebf2;
+      --muted: #8a93a4;
+      --accent: #2fb6ff;
+      --accent-hover: #5cc4ff;
+      --danger: #ff6b6b;
+      --ok: #5ad17a;
+      --warning: #f0b000;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    body {
+      background:
+        radial-gradient(1200px 600px at 50% -200px, #1a2538 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      width: 96px;
+      height: auto;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 4px 16px rgba(47, 182, 255, 0.25));
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0;
+    }
+
+    .version-pill {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 4px 12px;
+      background: rgba(47, 182, 255, 0.12);
+      border: 1px solid rgba(47, 182, 255, 0.3);
+      color: var(--accent);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .panel h2 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0 0 16px;
+      letter-spacing: 0.01em;
+    }
+
+    .install-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 0;
+    }
+
+    esp-web-install-button::part(button) {
+      background: var(--accent);
+      color: #06121e;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 120ms ease, transform 120ms ease;
+      letter-spacing: 0.02em;
+    }
+
+    esp-web-install-button::part(button):hover {
+      background: var(--accent-hover);
+    }
+
+    .unsupported {
+      display: none;
+      padding: 14px 18px;
+      background: rgba(255, 107, 107, 0.08);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 10px;
+      color: var(--danger);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    esp-web-install-button[install-unsupported] + .unsupported,
+    esp-web-install-button:not(:defined) + .unsupported {
+      display: block;
+    }
+
+    ol.steps {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+
+    ol.steps li {
+      counter-increment: step;
+      padding: 12px 0 12px 44px;
+      position: relative;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    ol.steps li:last-child { border-bottom: none; }
+
+    ol.steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(47, 182, 255, 0.15);
+      color: var(--accent);
+      border-radius: 50%;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    ol.steps li strong {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    ol.steps li span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .callout {
+      background: rgba(240, 176, 0, 0.06);
+      border: 1px solid rgba(240, 176, 0, 0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: var(--text);
+      font-size: 14px;
+      margin-top: 16px;
+    }
+
+    .callout strong { color: var(--warning); }
+
+    details.trouble {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+
+    details.trouble[open] {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    details.trouble summary {
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      outline: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    details.trouble summary::-webkit-details-marker { display: none; }
+    details.trouble summary::before {
+      content: "›";
+      color: var(--accent);
+      font-size: 18px;
+      transition: transform 120ms ease;
+      display: inline-block;
+    }
+    details.trouble[open] summary::before { transform: rotate(90deg); }
+
+    details.trouble p {
+      margin: 10px 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 40px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 32px 16px 64px; }
+      h1 { font-size: 22px; }
+      .panel { padding: 20px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img class="logo" src="assets/logo.png" alt="RDM logo" />
+      <h1>RDM-7 Dash Recovery Flasher</h1>
+      <p class="subtitle">Reflash your dashboard over USB when over-the-air updates fail.</p>
+      <span class="version-pill">Firmware v1.1.9</span>
+    </header>
+
+    <div class="panel">
+      <h2>Flash your device</h2>
+      <div class="install-row">
+        <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+        <div class="unsupported">
+          Your browser doesn't support USB flashing.<br>
+          Use the latest <strong>Chrome</strong> or <strong>Edge</strong> on a desktop computer.
+        </div>
+      </div>
+      <div class="callout">
+        <strong>When to use this:</strong> only if your dashboard is stuck on an old version
+        and Wi-Fi updates aren't working. For normal updates, use the dashboard's built-in
+        Wi-Fi update button.
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>How to flash</h2>
+      <ol class="steps">
+        <li>
+          <strong>Open this page in Chrome or Edge</strong>
+          <span>On a desktop or laptop computer. Safari, Firefox, and mobile browsers won't work — USB flashing needs the Web Serial API.</span>
+        </li>
+        <li>
+          <strong>Connect the dashboard with a USB-C cable</strong>
+          <span>Use a quality data cable — many charge-only cables won't pass USB data and the device won't appear.</span>
+        </li>
+        <li>
+          <strong>Click "Connect" above</strong>
+          <span>A pop-up will list available serial ports. Pick the one that looks like "USB JTAG/serial debug unit" or "CP210x"/"CH340" depending on your board.</span>
+        </li>
+        <li>
+          <strong>Click "Install RDM-7 Dash Firmware"</strong>
+          <span>The flash takes about 60 seconds. Don't unplug the cable until you see "Installation complete".</span>
+        </li>
+        <li>
+          <strong>Done</strong>
+          <span>The dashboard reboots automatically into the new firmware. Set up Wi-Fi from the on-screen wizard if needed.</span>
+        </li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2>Troubleshooting</h2>
+
+      <details class="trouble">
+        <summary>Nothing happens when I click Connect</summary>
+        <p>Make sure you're on Chrome or Edge desktop. Safari, Firefox, mobile browsers, and tablets don't support USB flashing. Also check the cable — try a different one if the device doesn't appear in the port list.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>The device isn't in the port list</summary>
+        <p>On Windows, install the CP210x or CH340 USB-serial driver if Device Manager shows an unknown device. On macOS and Linux, the device should appear without drivers. If it still doesn't show up, try a different USB port or cable.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>Flashing fails partway through</summary>
+        <p>Unplug the device, plug it back in, refresh this page, and try again. If it keeps failing, try a shorter or higher-quality USB cable — long cables can cause data errors during the flash.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>After flashing, the screen is blank or stuck on boot</summary>
+        <p>Hold the BOOT button (if your board has one) while reconnecting USB, then re-run the flash. This forces the chip into download mode for a clean install.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>Will this erase my settings and layouts?</summary>
+        <p>No. This flasher preserves the NVS and LittleFS partitions, so your Wi-Fi credentials, layouts, and saved settings stay intact. Only the firmware itself is replaced.</p>
+      </details>
+    </div>
+
+    <footer>
+      RDM-7 Dash · <a href="https://github.com/Trizzoto/potato-jubilee">GitHub</a>
+    </footer>
+  </div>
+</body>
+</html>
