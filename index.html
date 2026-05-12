@@ -332,8 +332,8 @@
       </details>
 
       <details class="trouble">
-        <summary>Will this erase my settings and layouts?</summary>
-        <p>No. This flasher preserves the NVS and LittleFS partitions, so your Wi-Fi credentials, layouts, and saved settings stay intact. Only the firmware itself is replaced.</p>
+        <summary>Will this erase my settings, Wi-Fi, or layouts?</summary>
+        <p>No. The flasher writes only the firmware image and the OTA selector — it doesn't touch the NVS partition (Wi-Fi credentials, settings) or LittleFS (layouts, images, fonts). After flashing, the dashboard reboots straight into the new firmware and reconnects to your Wi-Fi automatically.</p>
       </details>
     </div>
 

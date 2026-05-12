@@ -81,22 +81,41 @@ Or use the convenience script:
 
 The offsets in `manifest.json` match the partition table from the firmware build:
 
-| Binary                  | Offset (hex) | Offset (decimal) |
-|-------------------------|--------------|------------------|
-| `bootloader.bin`        | `0x0000`     | 0                |
-| `partition-table.bin`   | `0x8000`     | 32768            |
-| `ota_data_initial.bin`  | `0x2D000`    | 184320           |
-| `esp32-firmware.bin`    | `0x30000`    | 196608           |
+| Binary                  | Offset (hex) | Offset (decimal) | In manifest? |
+|-------------------------|--------------|------------------|--------------|
+| `bootloader.bin`        | `0x0000`     | 0                | No           |
+| `partition-table.bin`   | `0x8000`     | 32768            | No           |
+| `ota_data_initial.bin`  | `0x2D000`    | 184320           | Yes          |
+| `esp32-firmware.bin`    | `0x30000`    | 196608           | Yes          |
 
-If the partition table ever changes (e.g. a new layout in `partitions.csv`),
-update these offsets to match. The boot log on the device shows the live
-offsets.
+**Why bootloader and partition-table are skipped:** they haven't changed
+since the project's initial commit, and writing them risks affecting the
+adjacent NVS partition at `0x9000`. Deployed devices already have the
+correct bootloader and partition table, so flashing them again is wasted
+work — and risks wiping settings. If you ever change `partitions.csv` or
+the bootloader, add those back to the manifest for one release, then
+remove them again.
+
+The two parts we keep are necessary:
+- `ota_data_initial.bin` — resets the OTA selector so the bootloader picks
+  `ota_0` (where we just wrote the new firmware).
+- `esp32-firmware.bin` — the new firmware image, written to `ota_0`.
+
+The firmware binaries in `firmware/` still include `bootloader.bin` and
+`partition-table.bin` for completeness (they're kept in case a future
+release needs to flash them).
 
 ## What gets preserved during a flash
 
-`ota_data_initial.bin` resets the OTA pointer, but the flasher does **not**
-erase NVS (Wi-Fi credentials, settings) or LittleFS (layouts, images, fonts).
-Users keep all their saved data.
+The flasher writes only the OTA app slot + the OTA selector. It does **not**
+touch:
 
-`manifest.json` has `"new_install_prompt_erase": false` to make this explicit
-to ESP Web Tools.
+- `nvs` (Wi-Fi credentials, calibrations, all user settings)
+- `littlefs` (layouts, images, fonts)
+- `phy_init` (RF calibration)
+- `bootloader` / `partition-table`
+
+Users keep all saved data and reconnect to Wi-Fi automatically.
+
+`manifest.json` has `"new_install_prompt_erase": false` so ESP Web Tools
+doesn't offer a full-chip-erase option — preventing accidental factory resets.
