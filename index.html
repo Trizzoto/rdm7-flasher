@@ -200,6 +200,83 @@
       font-size: 14px;
     }
 
+    .log-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .log-controls button {
+      background: var(--accent);
+      color: #06121e;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+
+    .log-controls button:hover {
+      background: var(--accent-hover);
+    }
+
+    .log-controls button.secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--panel-border);
+    }
+
+    .log-controls button.secondary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+
+    .log-controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .log-status {
+      color: var(--muted);
+      font-size: 13px;
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .log-status.connected { color: var(--ok); }
+    .log-status.error { color: var(--danger); }
+
+    .log-output {
+      background: #04070b;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      height: 360px;
+      overflow-y: auto;
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text);
+    }
+
+    .log-output .log-i { color: #d6dde6; }
+    .log-output .log-w { color: #f0b000; }
+    .log-output .log-e { color: #ff6b6b; }
+    .log-output .log-d { color: #6f7a8a; }
+    .log-output .log-v { color: #4d5664; }
+
+    .log-output:empty::before {
+      content: "Click Connect to start streaming logs at 921600 baud.";
+      color: var(--muted);
+      font-style: italic;
+    }
+
     .callout {
       background: rgba(90, 209, 122, 0.06);
       border: 1px solid rgba(90, 209, 122, 0.3);
@@ -357,6 +434,21 @@
     </div>
 
     <div class="panel">
+      <h2>Live Device Logs</h2>
+      <p class="panel-desc">
+        Stream boot and runtime logs over USB at 921600 baud. Useful for
+        debugging after a flash. Use Chrome or Edge desktop.
+      </p>
+      <div class="log-controls">
+        <button id="logConnectBtn" type="button">Connect</button>
+        <button id="logClearBtn" type="button" class="secondary">Clear</button>
+        <button id="logPauseBtn" type="button" class="secondary" disabled>Pause</button>
+        <span id="logStatus" class="log-status">Not connected</span>
+      </div>
+      <div id="logOutput" class="log-output"></div>
+    </div>
+
+    <div class="panel">
       <h2>How to flash</h2>
       <ol class="steps">
         <li>
@@ -442,5 +534,168 @@
       RDM-7 Dash · <a href="https://github.com/Trizzoto/potato-jubilee">GitHub</a>
     </footer>
   </div>
+
+  <script>
+    /* Live log viewer — opens the serial port at 921600 baud (matches the
+       firmware's UART1 protocol rate) and streams plain-text log output.
+       Independent from esp-web-tools' built-in console which is hardcoded
+       at 115200. */
+    (function () {
+      const LOG_BAUD = 921600;
+      const MAX_LINES = 2000;
+
+      const connectBtn = document.getElementById('logConnectBtn');
+      const clearBtn = document.getElementById('logClearBtn');
+      const pauseBtn = document.getElementById('logPauseBtn');
+      const status = document.getElementById('logStatus');
+      const output = document.getElementById('logOutput');
+
+      if (!('serial' in navigator)) {
+        connectBtn.disabled = true;
+        status.textContent = 'Web Serial not supported in this browser';
+        status.classList.add('error');
+        return;
+      }
+
+      let port = null;
+      let reader = null;
+      let keepReading = false;
+      let paused = false;
+      let decoder = new TextDecoder('utf-8', { fatal: false });
+      let lineBuf = '';
+      let autoScroll = true;
+
+      output.addEventListener('scroll', () => {
+        const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 30;
+        autoScroll = atBottom;
+      });
+
+      function setStatus(text, kind) {
+        status.textContent = text;
+        status.classList.remove('connected', 'error');
+        if (kind) status.classList.add(kind);
+      }
+
+      function stripAnsi(s) {
+        return s.replace(/\x1B\[[0-9;]*m/g, '');
+      }
+
+      function appendLine(line) {
+        if (paused) return;
+        const clean = stripAnsi(line);
+        const first = clean[0];
+        let cls = 'log-i';
+        if (first === 'W') cls = 'log-w';
+        else if (first === 'E') cls = 'log-e';
+        else if (first === 'D') cls = 'log-d';
+        else if (first === 'V') cls = 'log-v';
+
+        const span = document.createElement('span');
+        span.className = cls;
+        span.textContent = clean;
+        output.appendChild(span);
+
+        /* Trim old lines once we exceed the cap. */
+        while (output.childNodes.length > MAX_LINES) {
+          output.removeChild(output.firstChild);
+        }
+
+        if (autoScroll) {
+          output.scrollTop = output.scrollHeight;
+        }
+      }
+
+      function processChunk(text) {
+        lineBuf += text;
+        let nl;
+        while ((nl = lineBuf.indexOf('\n')) !== -1) {
+          appendLine(lineBuf.slice(0, nl + 1));
+          lineBuf = lineBuf.slice(nl + 1);
+        }
+      }
+
+      async function readLoop() {
+        try {
+          while (keepReading && port && port.readable) {
+            reader = port.readable.getReader();
+            try {
+              while (keepReading) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                if (value) processChunk(decoder.decode(value, { stream: true }));
+              }
+            } finally {
+              try { reader.releaseLock(); } catch (e) { /* ignore */ }
+              reader = null;
+            }
+          }
+        } catch (err) {
+          if (keepReading) setStatus('Read error: ' + err.message, 'error');
+        }
+      }
+
+      async function connect() {
+        try {
+          port = await navigator.serial.requestPort();
+          await port.open({ baudRate: LOG_BAUD, bufferSize: 16384 });
+          keepReading = true;
+          setStatus('Connected at ' + LOG_BAUD + ' baud', 'connected');
+          connectBtn.textContent = 'Disconnect';
+          pauseBtn.disabled = false;
+          readLoop();
+        } catch (err) {
+          if (err && err.name === 'NotFoundError') {
+            setStatus('No port selected', null);
+          } else {
+            setStatus('Error: ' + (err && err.message ? err.message : err), 'error');
+          }
+          port = null;
+        }
+      }
+
+      async function disconnect() {
+        keepReading = false;
+        if (reader) {
+          try { await reader.cancel(); } catch (e) { /* ignore */ }
+        }
+        if (port) {
+          try { await port.close(); } catch (e) { /* ignore */ }
+          port = null;
+        }
+        setStatus('Not connected', null);
+        connectBtn.textContent = 'Connect';
+        pauseBtn.disabled = true;
+        paused = false;
+        pauseBtn.textContent = 'Pause';
+        lineBuf = '';
+      }
+
+      connectBtn.addEventListener('click', () => {
+        if (port) {
+          disconnect();
+        } else {
+          connect();
+        }
+      });
+
+      clearBtn.addEventListener('click', () => {
+        output.innerHTML = '';
+        lineBuf = '';
+        autoScroll = true;
+      });
+
+      pauseBtn.addEventListener('click', () => {
+        paused = !paused;
+        pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+      });
+
+      window.addEventListener('beforeunload', () => {
+        if (port) {
+          keepReading = false;
+          try { port.close(); } catch (e) { /* ignore */ }
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
