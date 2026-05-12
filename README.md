@@ -1,10 +1,22 @@
 # RDM-7 Dash — Recovery Flasher
 
-A static web page that lets users reflash an RDM-7 Dash over USB when Wi-Fi
-updates don't work. Built with [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
+A static web page that lets users reflash an RDM-7 Dash over USB. Built with
+[ESP Web Tools](https://esphome.github.io/esp-web-tools/).
+
+## Two modes
+
+**Firmware Update** (recommended — `manifest.json`)
+Writes only the firmware image + OTA selector. Preserves Wi-Fi credentials,
+all settings (NVS), and layouts/images/fonts (LittleFS). The everyday recovery
+path when OTA updates aren't working.
+
+**Full Recovery Flash** (last resort — `manifest-full.json`, `erase-first`)
+Erases the entire flash and reinstalls bootloader + partition table +
+firmware. Wipes Wi-Fi, settings, layouts, everything. User redoes the
+first-run wizard. Only for bricked devices or boot loops.
 
 Audience: end users with a deployed dashboard stuck on an old firmware version
-that can't successfully OTA-update.
+that can't OTA-update — or a fully bricked device for the full-recovery path.
 
 ## Hosting
 
@@ -66,56 +78,62 @@ Or use the convenience script:
 
 ```
 .
-├── index.html         Landing page + guide
-├── manifest.json      ESP Web Tools install manifest (chip, parts, offsets)
-├── firmware/          Firmware binaries (committed; not built here)
+├── index.html              Landing page + guide
+├── manifest.json           ESP Web Tools manifest — firmware update mode (2 parts)
+├── manifest-full.json      ESP Web Tools manifest — full recovery mode (4 parts + erase)
+├── firmware/               Firmware binaries (committed; not built here)
 │   ├── bootloader.bin
 │   ├── partition-table.bin
 │   ├── ota_data_initial.bin
 │   └── esp32-firmware.bin
 └── assets/
-    └── logo.png       RDM logo
+    └── logo.png            RDM logo
 ```
 
 ## Partition offsets
 
-The offsets in `manifest.json` match the partition table from the firmware build:
+Both manifests use these offsets, which match `partitions.csv` in the firmware repo:
 
-| Binary                  | Offset (hex) | Offset (decimal) | In manifest? |
-|-------------------------|--------------|------------------|--------------|
-| `bootloader.bin`        | `0x0000`     | 0                | No           |
-| `partition-table.bin`   | `0x8000`     | 32768            | No           |
-| `ota_data_initial.bin`  | `0x2D000`    | 184320           | Yes          |
-| `esp32-firmware.bin`    | `0x30000`    | 196608           | Yes          |
+| Binary                  | Offset (hex) | Offset (decimal) | In `manifest.json` | In `manifest-full.json` |
+|-------------------------|--------------|------------------|--------------------|-------------------------|
+| `bootloader.bin`        | `0x0000`     | 0                | No                 | Yes                     |
+| `partition-table.bin`   | `0x8000`     | 32768            | No                 | Yes                     |
+| `ota_data_initial.bin`  | `0x2D000`    | 184320           | Yes                | Yes                     |
+| `esp32-firmware.bin`    | `0x30000`    | 196608           | Yes                | Yes                     |
 
-**Why bootloader and partition-table are skipped:** they haven't changed
-since the project's initial commit, and writing them risks affecting the
-adjacent NVS partition at `0x9000`. Deployed devices already have the
-correct bootloader and partition table, so flashing them again is wasted
-work — and risks wiping settings. If you ever change `partitions.csv` or
-the bootloader, add those back to the manifest for one release, then
-remove them again.
+### Why Firmware Update skips bootloader and partition-table
 
-The two parts we keep are necessary:
-- `ota_data_initial.bin` — resets the OTA selector so the bootloader picks
-  `ota_0` (where we just wrote the new firmware).
-- `esp32-firmware.bin` — the new firmware image, written to `ota_0`.
+Deployed devices already have these and they haven't changed since the
+project's initial commit. Writing them risks affecting the adjacent NVS
+partition at `0x9000` (Wi-Fi credentials, settings). Skipping them keeps the
+flash region a comfortable distance from NVS while still installing new
+firmware and pointing the bootloader at it.
 
-The firmware binaries in `firmware/` still include `bootloader.bin` and
-`partition-table.bin` for completeness (they're kept in case a future
-release needs to flash them).
+If you ever change `partitions.csv` or the bootloader, you'd need to either:
+1. Add those back to `manifest.json` for one release — but users would lose
+   settings on that update.
+2. Or instruct users to use Full Recovery for that one release, then revert
+   to Firmware Update for subsequent ones.
 
-## What gets preserved during a flash
+## What gets preserved by each mode
 
-The flasher writes only the OTA app slot + the OTA selector. It does **not**
-touch:
+| Partition                                | Firmware Update | Full Recovery |
+|------------------------------------------|-----------------|---------------|
+| `nvs` (Wi-Fi, settings, calibrations)    | Preserved       | Erased        |
+| `littlefs` (layouts, images, fonts)      | Preserved       | Erased        |
+| `phy_init` (RF calibration)              | Preserved       | Erased*       |
+| `bootloader`                             | Preserved       | Rewritten     |
+| `partition-table`                        | Preserved       | Rewritten     |
+| `otadata` (OTA selector)                 | Reset           | Reset         |
+| `ota_0` / `ota_1` (app slots)            | `ota_0` written | `ota_0` written |
 
-- `nvs` (Wi-Fi credentials, calibrations, all user settings)
-- `littlefs` (layouts, images, fonts)
-- `phy_init` (RF calibration)
-- `bootloader` / `partition-table`
-
-Users keep all saved data and reconnect to Wi-Fi automatically.
+*Full Recovery uses `erase-first` on the install button, which issues
+`esptool.eraseFlash()` before writing any parts — wiping the whole 16 MB chip.
 
 `manifest.json` has `"new_install_prompt_erase": false` so ESP Web Tools
-doesn't offer a full-chip-erase option — preventing accidental factory resets.
+doesn't even offer an erase option during Firmware Update — preventing
+accidental factory resets.
+
+`manifest-full.json` has `"new_install_prompt_erase": true` *and* the button
+uses the `erase-first` attribute, so the user is explicitly opting into a
+full wipe via that button.

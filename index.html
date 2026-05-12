@@ -127,6 +127,19 @@
       background: var(--accent-hover);
     }
 
+    esp-web-install-button.danger::part(button) {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(255, 107, 107, 0.5);
+      padding: 12px 28px;
+      font-size: 14px;
+    }
+
+    esp-web-install-button.danger::part(button):hover {
+      background: rgba(255, 107, 107, 0.1);
+      border-color: var(--danger);
+    }
+
     .unsupported {
       display: none;
       padding: 14px 18px;
@@ -188,8 +201,8 @@
     }
 
     .callout {
-      background: rgba(240, 176, 0, 0.06);
-      border: 1px solid rgba(240, 176, 0, 0.3);
+      background: rgba(90, 209, 122, 0.06);
+      border: 1px solid rgba(90, 209, 122, 0.3);
       border-radius: 10px;
       padding: 14px 18px;
       color: var(--text);
@@ -197,7 +210,41 @@
       margin-top: 16px;
     }
 
-    .callout strong { color: var(--warning); }
+    .callout strong { color: var(--ok); }
+
+    .callout.warn {
+      background: rgba(240, 176, 0, 0.06);
+      border-color: rgba(240, 176, 0, 0.3);
+    }
+    .callout.warn strong { color: var(--warning); }
+
+    .callout.danger {
+      background: rgba(255, 107, 107, 0.06);
+      border-color: rgba(255, 107, 107, 0.3);
+    }
+    .callout.danger strong { color: var(--danger); }
+
+    .panel.danger {
+      border-color: rgba(255, 107, 107, 0.25);
+    }
+
+    .panel.danger h2 {
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel.danger h2::before {
+      content: "⚠";
+      font-size: 18px;
+    }
+
+    .panel-desc {
+      color: var(--muted);
+      font-size: 14px;
+      margin: -6px 0 18px;
+    }
 
     details.trouble {
       background: rgba(255, 255, 255, 0.02);
@@ -267,7 +314,11 @@
     </header>
 
     <div class="panel">
-      <h2>Flash your device</h2>
+      <h2>Firmware Update</h2>
+      <p class="panel-desc">
+        Replaces the firmware over USB. Keeps your Wi-Fi credentials, layouts,
+        and all settings intact.
+      </p>
       <div class="install-row">
         <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
         <div class="unsupported">
@@ -276,9 +327,26 @@
         </div>
       </div>
       <div class="callout">
-        <strong>When to use this:</strong> only if your dashboard is stuck on an old version
-        and Wi-Fi updates aren't working. For normal updates, use the dashboard's built-in
-        Wi-Fi update button.
+        <strong>Recommended.</strong> Use this if Wi-Fi OTA updates aren't working
+        on your dashboard. Takes about 60 seconds. Nothing is erased except the
+        firmware itself.
+      </div>
+    </div>
+
+    <div class="panel danger">
+      <h2>Full Recovery Flash</h2>
+      <p class="panel-desc">
+        Erases the entire flash and reinstalls bootloader, partition table, and
+        firmware. Use only if the dashboard is bricked or stuck in a boot loop.
+      </p>
+      <div class="install-row">
+        <esp-web-install-button class="danger" manifest="manifest-full.json" erase-first></esp-web-install-button>
+      </div>
+      <div class="callout danger">
+        <strong>This will erase everything.</strong> All Wi-Fi credentials,
+        saved layouts, custom images, fonts, and settings will be lost. You'll
+        need to redo first-run setup. Only use this if a regular Firmware Update
+        doesn't fix the problem.
       </div>
     </div>
 
@@ -332,8 +400,13 @@
       </details>
 
       <details class="trouble">
-        <summary>Will this erase my settings, Wi-Fi, or layouts?</summary>
-        <p>No. The flasher writes only the firmware image and the OTA selector — it doesn't touch the NVS partition (Wi-Fi credentials, settings) or LittleFS (layouts, images, fonts). After flashing, the dashboard reboots straight into the new firmware and reconnects to your Wi-Fi automatically.</p>
+        <summary>Will Firmware Update erase my settings, Wi-Fi, or layouts?</summary>
+        <p>No. The Firmware Update mode writes only the firmware image and the OTA selector — it doesn't touch the NVS partition (Wi-Fi credentials, settings) or LittleFS (layouts, images, fonts). After flashing, the dashboard reboots into the new firmware and reconnects to your Wi-Fi automatically.</p>
+      </details>
+
+      <details class="trouble">
+        <summary>When should I use Full Recovery instead?</summary>
+        <p>Only if a normal Firmware Update doesn't fix the problem — for example, the dashboard is stuck in a boot loop, the screen stays black after power-on, or the device won't appear in the serial port list after flashing. Full Recovery wipes the entire flash and reinstalls everything from scratch, so you'll lose all settings and saved data.</p>
       </details>
     </div>
 
