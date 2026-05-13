@@ -3,25 +3,6 @@
 A static web page that lets users reflash an RDM-7 Dash over USB. Built with
 [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
 
-## Live log viewer (921600 baud)
-
-The page also includes a **Live Device Logs** panel that streams plain-text
-ESP-IDF logs over USB at 921600 baud — the rate the firmware uses for its
-UART1 protocol. esp-web-tools' built-in console is hardcoded at 115200 and
-can't be reconfigured via manifest, so the page uses a separate Web Serial
-connection for log viewing.
-
-The viewer:
-- Opens its own serial port via `navigator.serial.requestPort()` — user
-  picks the same port they flashed with
-- Strips ANSI color codes and re-colors lines by ESP-IDF level (I/W/E/D/V)
-- Caps at 2000 lines and auto-scrolls (pauses auto-scroll on manual scroll)
-- Has Pause / Clear / Disconnect controls
-
-It is independent from the install dialog — flashing and log viewing don't
-share state. After a flash completes, the user disconnects the install
-dialog's port, then clicks Connect on the log viewer.
-
 ## Two modes
 
 Both modes pop up the same esp-web-tools dialog that asks "Erase device?" with
