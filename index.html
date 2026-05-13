@@ -495,8 +495,26 @@
       </details>
 
       <details class="trouble">
+        <summary>Do I need to install a USB driver?</summary>
+        <p>The RDM-7 Dash uses a <strong>CH340</strong> USB-to-serial chip. Driver requirements:</p>
+        <ul style="margin:8px 0 6px 18px; padding:0; color:var(--muted); font-size:14px; line-height:1.7;">
+          <li><strong>Windows 11:</strong> usually auto-installs from Windows Update — try plugging in first, only grab the driver if Device Manager shows an unknown device.</li>
+          <li><strong>Windows 10 / 8 / 7:</strong> driver is required. <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html" target="_blank" rel="noopener" style="color:var(--accent);">Download CH341SER from WCH</a> → run the installer → reboot if asked.</li>
+          <li><strong>macOS:</strong> driver is required on all versions. <a href="https://www.wch-ic.com/downloads/CH34XSER_MAC_ZIP.html" target="_blank" rel="noopener" style="color:var(--accent);">Download CH34xSER for macOS</a> → install the .pkg → approve the system extension in System Settings → Privacy &amp; Security if prompted.</li>
+          <li><strong>Linux:</strong> the kernel ships the <code>ch341</code> module by default — works out of the box.</li>
+          <li><strong>ChromeOS:</strong> works out of the box.</li>
+        </ul>
+        <p>If the page can't find the device after installing the driver, fully unplug the USB cable, plug it back in, then refresh this page.</p>
+      </details>
+
+      <details class="trouble">
         <summary>The device isn't in the port list</summary>
-        <p>First, check the UART switch on the back of the dashboard — it must be set to <strong>UART1</strong> for USB to work. If it's on UART2, the device won't show up at all. On Windows, also install the CP210x or CH340 USB-serial driver if Device Manager shows an unknown device. On macOS and Linux, the device should appear without drivers. If it still doesn't show up, try a different USB port or cable.</p>
+        <p>Three things to check, in order:</p>
+        <ol style="margin:8px 0 0 18px; padding:0; color:var(--muted); font-size:14px; line-height:1.7;">
+          <li>The <strong>UART switch</strong> on the back of the dashboard must be set to <strong>UART1</strong> — UART2 disconnects USB entirely so nothing will show up.</li>
+          <li>Install the <strong>CH340 driver</strong> (see the entry above) if you're on Windows or macOS and haven't already. Without it, Device Manager shows an unknown device with a yellow exclamation.</li>
+          <li>Try a different <strong>USB cable</strong> — many cables are charge-only and don't pass data. Try a different USB port too if you have a hub in the chain.</li>
+        </ol>
       </details>
 
       <details class="trouble">
