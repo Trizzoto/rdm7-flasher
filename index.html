@@ -373,7 +373,7 @@
         </li>
         <li>
           <strong>Click "Connect" above</strong>
-          <span>A pop-up will list available serial ports. Pick the one that looks like "USB JTAG/serial debug unit" or "CP210x"/"CH340" depending on your board.</span>
+          <span>A pop-up will list available serial ports. Pick the one labelled "CH341" / "USB-SERIAL CH341A" (or "USB JTAG/serial debug unit" if the dash boots into UART2 mode).</span>
         </li>
         <li>
           <strong>Click "Install RDM-7 Dash Firmware"</strong>
@@ -404,7 +404,7 @@
 
       <details class="trouble">
         <summary>Do I need to install a USB driver?</summary>
-        <p>The RDM-7 Dash uses a <strong>CH340</strong> USB-to-serial chip. Driver requirements:</p>
+        <p>The RDM-7 Dash uses a <strong>CH341</strong> USB-to-serial chip. Driver requirements:</p>
         <ul style="margin:8px 0 6px 18px; padding:0; color:var(--muted); font-size:14px; line-height:1.7;">
           <li><strong>Windows 11:</strong> usually auto-installs from Windows Update — try plugging in first, only grab the driver if Device Manager shows an unknown device.</li>
           <li><strong>Windows 10 / 8 / 7:</strong> driver is required. <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html" target="_blank" rel="noopener" style="color:var(--accent);">Download CH341SER from WCH</a> → run the installer → reboot if asked.</li>
@@ -420,7 +420,7 @@
         <p>Three things to check, in order:</p>
         <ol style="margin:8px 0 0 18px; padding:0; color:var(--muted); font-size:14px; line-height:1.7;">
           <li>The <strong>UART switch</strong> on the back of the dashboard must be set to <strong>UART1</strong> — UART2 disconnects USB entirely so nothing will show up.</li>
-          <li>Install the <strong>CH340 driver</strong> (see the entry above) if you're on Windows or macOS and haven't already. Without it, Device Manager shows an unknown device with a yellow exclamation.</li>
+          <li>Install the <strong>CH341 driver</strong> (see the entry above) if you're on Windows or macOS and haven't already. Without it, Device Manager shows an unknown device with a yellow exclamation.</li>
           <li>Try a different <strong>USB cable</strong> — many cables are charge-only and don't pass data. Try a different USB port too if you have a hub in the chain.</li>
         </ol>
       </details>
